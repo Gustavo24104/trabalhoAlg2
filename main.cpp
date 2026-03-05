@@ -1,29 +1,30 @@
 #include <algorithm>
 #include <iostream>
-#include <cmath>
 #include <list>
 #include <vector>
+#include <chrono>
+
 
 using namespace std;
-#define N 30
-
 
 void colocaAresta(list<int> adj[], int u, int v) {
     adj[u].push_back(v);
     adj[v].push_back(u);
 }
 
-// adiciona arestas aleatórias no grafo
-void PopulaGrafo(list<int> adj[], int v) {
-    srand(time(NULL));
+
+int PopulaGrafo(list<int> adj[], int v) {
+    int res = 0;
     for(int i = 0; i < v; ++i) {
         for(int j = i + 1; j < v; ++j) {
-            if(rand() % 100 <= 50) colocaAresta(adj, i, j);
-            // colocaAresta(adj, i, j);
+            if(rand() % 100 <= 50) {
+                colocaAresta(adj, i, j);
+                res += 2;
+            }
         }
     }
+    return res;
 }
-
 
 
 bool contains(const vector<int>& s, int a, int b) {
@@ -76,17 +77,36 @@ vector<int> CoberturaExata(list<int> adj[], int n) {
     return retorno;
 }
 
+bool BuscaCobertura(list<int> adj[], const vector<bool>& visitado, int n, int k, int E) {
+    if(E > 0 && k == 0) return false;
+    if(E == 0) return true;
+    for(int u = 0; u < n; ++u) {
+        if(!visitado[u]) {
+            for(auto &v : adj[u]) {
+                if(!visitado[v]) {
+                    vector<bool> Gu(visitado);
+                    vector<bool> Gv(visitado);
+                    E -= adj[u].size() + adj[v].size();
+                    E++;
+                    Gu[u] = true;
+                    Gv[v] = true;
+                    if(BuscaCobertura(adj, Gu, n - 1, k - 1, E)) return true;
+                    if(BuscaCobertura(adj, Gv, n - 1, k - 1, E)) return true;
+                    return false;
+                }
+            }
+        }
+    }
+    return false;
+}
 
 vector<int> CoberturaAproximada(list<int> adj[], int v) {
     vector<int> retorno;
     vector<bool> visitado;
     visitado.resize(v);
-
     for(int i = 0; i < v; ++i) {
         if(!visitado[i]) {
-
             for(int &j : adj[i]) {
-                //cout << "Vertice: (" << i << ", " << j << ")\n";
                 if(!visitado[j]) {
                     visitado[i] = true;
                     visitado[j] = true;
@@ -100,35 +120,82 @@ vector<int> CoberturaAproximada(list<int> adj[], int v) {
     return retorno;
 }
 
+vector<int> CoberturaExataMelhor(list<int> adj[], int n, int E) {
+    for(int i = 0; i < n; ++i) {
+        vector<bool> b(n);
+        bool achou = BuscaCobertura(adj, b, n, i, E);
+        if(achou) {
+            vector<vector<int>> candidatos = GeraSubconjunto(n, i);
+            for(auto &j : candidatos) {
+                if(VerificaCobertura(adj, j, n)) return j;
+            }
+        }
+    }
+    vector<int> a;
+    return a;
+}
+
+
+void TesteTotal() {
+    // Vertice | Aresta | Tempo Exato | Tempo Exato 2 | Tempo Aproximado | Resposta Exata | Resposta Exata 2 | Resposta Aproximada
+    cout << "Vertic\t|\t Aresta \t|\t TempoE \t|\t TempoE2 \t|\t TempoAp \t||\t RespEx \t|\t RespE2 \t|\t RespAp\t| \n";
+    int n = 1;
+
+    while (n <= 30) {
+        list<int> adj[n];
+        vector<int> respostaExata, respostaAproximada, respostaExata2;
+        int qtdA = PopulaGrafo(adj, n);
+
+        auto t1 = chrono::high_resolution_clock::now();
+        respostaExata = CoberturaExata(adj, n);
+        auto t2 = chrono::high_resolution_clock::now();
+        chrono::duration<long double, milli> tempoExato = t2 - t1;
+
+        t1 = chrono::high_resolution_clock::now();
+        respostaAproximada = CoberturaAproximada(adj, n);
+        t2 = chrono::high_resolution_clock::now();
+        chrono::duration<long double, milli> tempoAprox = t2 - t1;
+
+        t1 = chrono::high_resolution_clock::now();
+        respostaExata2 = CoberturaExataMelhor(adj, n, qtdA);
+        t2 = chrono::high_resolution_clock::now();
+        chrono::duration<long double, milli> tempoExato2 = t2 - t1;
+
+
+        cout << setprecision(4) << fixed << setw(6);
+
+        cout << n << "\t" << qtdA << "\t" << tempoExato.count()  << "\t" << tempoExato2.count() << "\t" <<
+            tempoAprox.count() << "\t" << respostaExata.size() << "\t"
+            << respostaExata2.size() << "\t" << respostaAproximada.size() << endl;
+        n++;
+    }
+}
+
+void TesteAproximado() {
+    // Vertice | Aresta | Tempo Aproximado | Resposta Aproximada |
+    cout << "Vertice\t|\t Aresta \t|\t TempoAp \t|\t RespAp\t|\n";
+    int n = 30;
+
+    while (1) {
+        list<int> adj[n];
+        vector<int> respostaAproximada;
+        int qtdA = PopulaGrafo(adj, n);
+        auto t1 = chrono::high_resolution_clock::now();
+        respostaAproximada = CoberturaAproximada(adj, n);
+        auto t2 = chrono::high_resolution_clock::now();
+        chrono::duration<long double, milli> tempoAprox = t2 - t1;
+        cout << setprecision(4) << fixed << setw(6);
+        cout << n << "\t" << qtdA << "\t" << respostaAproximada.size() << "\t" << tempoAprox.count() << "\t" << "\t" << endl;
+        n++;
+    }
+}
+
+
+
+
 
 int main() {
-    list<int> adj[N];
-    vector<int> respostaExata, respostaAproximada;
-    PopulaGrafo(adj, N);
-
-
-    respostaAproximada = CoberturaAproximada(adj, N);
-    respostaExata = CoberturaExata(adj, N);
-
-
-    bool verifica = VerificaCobertura(adj, respostaExata, N);
-
-    if(!verifica) {
-        cout << "que\n";
-        return -1;
-    }
-
-
-    cout << "Exata achou com: " << respostaExata.size() << " elementos\n";
-    for(auto &j : respostaExata) {
-        cout << j << ", ";
-    }
-
-
-    cout << "\nAproximada achou com: " << respostaAproximada.size() << " elementos\n";
-
-    for(auto &j : respostaAproximada) {
-        cout << j << ", ";
-    }
+    srand(time(NULL));
+    TesteTotal();
     return 0;
 }

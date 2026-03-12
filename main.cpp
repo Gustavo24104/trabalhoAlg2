@@ -142,7 +142,7 @@ void TesteTotal() {
         cout << setprecision(4) << fixed << setw(6);
 
         cout << n << "\t" << qtdA << "\t" << tempoExato.count()  << "\t"
-        << respostaExata.size() << "\t" << tempoAP.count() << respostaExata.size() << endl;
+        << respostaExata.size() << "\t" << tempoAP.count() << respostaAp.size() << endl;
         n++;
     }
 }
